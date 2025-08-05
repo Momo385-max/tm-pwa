@@ -66,18 +66,31 @@ async function loadModel() {
   await forceReloadModelAssets();
 
   statusEl.textContent = 'Lade Modell...';
-  const modelURL = MODEL_URL + 'model.json';
-  const metadataURL = MODEL_URL + 'metadata.json';
+  async function loadModel() {
+  if (model) return;
+  await loadLibs();
+
+  // 1) Erst alle Assets frisch laden (du hast das schon drin)
+  statusEl.textContent = 'Prüfe & lade Modelldateien (netzwerk-frisch)...';
+  await forceReloadModelAssets();
+
+  // 2) Cache-Buster an die URLs hängen, damit tmImage.load nicht aus altem Cache liest
+  const v = Date.now(); // oder eine feste Build-Nummer
+  statusEl.textContent = 'Lade Modell...';
+  const modelURL = MODEL_URL + 'model.json?v=' + v;
+  const metadataURL = MODEL_URL + 'metadata.json?v=' + v;
+
   try {
     model = await tmImage.load(modelURL, metadataURL);
     maxPredictions = model.getTotalClasses();
     statusEl.innerHTML = '<span class="ok">Modell geladen.</span>';
   } catch (e) {
     console.error(e);
-    diagEl.innerHTML = '<span class="error">Fehler beim initialen Laden des Modells.</span>';
+    diagEl.innerHTML = '<span class="error">Fehler beim initialen Laden des Modells: ' + (e && e.message ? e.message : '') + '</span>';
     throw e;
   }
 }
+
 
 // Start camera (iOS-friendly)
 async function startCamera() {
