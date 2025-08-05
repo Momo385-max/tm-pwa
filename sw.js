@@ -1,5 +1,5 @@
 // SW with absolute scope and network-first for /tm-pwa/model/ to avoid stale caches
-const CACHE_NAME = 'tm-pwa-ios-forced-v1';
+const CACHE_NAME = 'tm-pwa-ios-forced-v7';
 const CORE_ASSETS = [
   '/tm-pwa/',
   '/tm-pwa/index.html',
