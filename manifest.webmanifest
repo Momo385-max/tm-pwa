@@ -1,5 +1,5 @@
 {
-  "name": "TM iPhone PWA (Lazy + Forced Reload)",
+  "name": "TM iPhone PWA (Forced Reload)",
   "short_name": "TM PWA",
   "start_url": "/tm-pwa/",
   "scope": "/tm-pwa/",

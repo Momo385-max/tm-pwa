@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>TM – iPhone PWA (Lazy + Forced Reload)</title>
+  <title>TM – iPhone PWA (Forced Reload)</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#ffffff"/>
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -50,11 +50,12 @@
           <label class="hint"><input type="checkbox" id="auto" checked> Live-Prediction</label>
         </div>
         <div class="uploader">
-          <p><strong>Oder: Foto auswählen</strong></p>
+          <p style="margin:0 0 8px 0"><strong>Oder: Foto auswählen</strong></p>
           <input type="file" id="file" accept="image/*" capture="environment" style="display:none">
           <button id="btn-file">Bild aus Mediathek/Kamera wählen</button>
+          <div class="status">iPhone: Kamera & PWA funktionieren nur über <strong>HTTPS</strong>. Tippe oben auf „Installieren“, um zum Home-Bildschirm hinzuzufügen.</div>
         </div>
-        <div class="status" id="status">Bereit.</div>
+        <div class="status" id="status">Bereit. Beim Start werden Modelldateien direkt vom Server (cache: reload) geprüft und anschließend geladen.</div>
         <div class="status" id="diag"></div>
       </div>
       <div class="card labels">
@@ -64,24 +65,27 @@
     </div>
   </main>
 
+  <!-- Lazy load libs -->
   <script>
     let libsLoaded = false;
     async function ensureLibs() {
       if (libsLoaded) return;
       await Promise.all([
-        new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); }),
-        new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); })
+        new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }),
+        new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); })
       ]);
       libsLoaded = true;
     }
   </script>
   <script src="app.js"></script>
   <script>
+    // Service Worker with absolute scope for GitHub Pages subpath
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/tm-pwa/sw.js', { scope: '/tm-pwa/' }).catch(console.error);
       });
     }
+    // PWA Install
     let deferredPrompt;
     const btnInstall = document.getElementById('btn-install');
     window.addEventListener('beforeinstallprompt', (e) => {

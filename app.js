@@ -1,7 +1,9 @@
+// PWA with forced reload of all model assets
 let model, maxPredictions;
 let stream, video, anim;
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+
 const statusEl = document.getElementById('status');
 const diagEl = document.getElementById('diag');
 const resultsEl = document.getElementById('results');
@@ -12,14 +14,17 @@ const autoChk = document.getElementById('auto');
 const fileInput = document.getElementById('file');
 const btnFile = document.getElementById('btn-file');
 
-const MODEL_URL = 'https://momo385-max.github.io/tm-pwa/model/';
+const MODEL_URL = 'https://momo385-max.github.io/tm-pwa/model/'; // absolute URL for GitHub Pages subpath
 
 async function forceReloadModelAssets() {
+  // Always fetch model.json & metadata.json fresh from network
   const urlsToFetch = [MODEL_URL + 'model.json', MODEL_URL + 'metadata.json'];
   try {
     const modelResp = await fetch(MODEL_URL + 'model.json', { cache: 'reload' });
     if (!modelResp.ok) throw new Error('model.json network error ' + modelResp.status);
     const modelJson = await modelResp.clone().json();
+
+    // Try to find weight shard paths in TFJS manifest
     if (modelJson && modelJson.weightsManifest) {
       for (const group of modelJson.weightsManifest) {
         for (const path of group.paths) {
@@ -31,6 +36,8 @@ async function forceReloadModelAssets() {
     diagEl.innerHTML = '<span class="error">Konnte model.json nicht frisch laden: ' + (e && e.message ? e.message : e) + '</span>';
     throw e;
   }
+
+  // Fetch all URLs with cache: 'reload' to bypass any stale cache
   for (const u of urlsToFetch) {
     try {
       const r = await fetch(u, { cache: 'reload' });
@@ -45,7 +52,7 @@ async function forceReloadModelAssets() {
 async function loadLibs() {
   try { await ensureLibs(); }
   catch (e) {
-    diagEl.innerHTML = '<span class="error">Fehler: Bibliotheken nicht geladen.</span>'; 
+    diagEl.innerHTML = '<span class="error">Fehler: TFJS/TM Libraries nicht geladen.</span>'; 
     throw e;
   }
 }
@@ -53,12 +60,14 @@ async function loadLibs() {
 async function loadModel() {
   if (model) return;
   await loadLibs();
+
+  // Force fresh network fetch for model assets before load
   statusEl.textContent = 'Prüfe & lade Modelldateien (netzwerk-frisch)...';
   await forceReloadModelAssets();
-  const v = Date.now();
+
   statusEl.textContent = 'Lade Modell...';
-  const modelURL = MODEL_URL + 'model.json?v=' + v;
-  const metadataURL = MODEL_URL + 'metadata.json?v=' + v;
+  const modelURL = MODEL_URL + 'model.json';
+  const metadataURL = MODEL_URL + 'metadata.json';
   try {
     model = await tmImage.load(modelURL, metadataURL);
     maxPredictions = model.getTotalClasses();
@@ -70,8 +79,9 @@ async function loadModel() {
   }
 }
 
+// Start camera (iOS-friendly)
 async function startCamera() {
-  await stopAll();
+  await stopAll(); // reset state
   try { await loadModel(); } catch { return; }
   const constraints = { video: { facingMode: { ideal: 'environment' } }, audio: false };
   try {
@@ -82,11 +92,13 @@ async function startCamera() {
     video.muted = true;
     video.srcObject = stream;
     await video.play();
+
     const vw = video.videoWidth || 640;
     const vh = video.videoHeight || 480;
     const scale = Math.min(640 / vw, 480 / vh, 1);
     canvas.width = Math.round(vw * scale);
     canvas.height = Math.round(vh * scale);
+
     function draw() {
       const w = canvas.width, h = canvas.height;
       ctx.drawImage(video, 0, 0, w, h);
@@ -101,7 +113,7 @@ async function startCamera() {
   } catch (e) {
     console.error(e);
     statusEl.textContent = 'Kamera konnte nicht gestartet werden.';
-    diagEl.innerHTML = '<span class="error">iOS benötigt HTTPS & Kamerafreigabe.</span>';
+    diagEl.innerHTML = '<span class="error">iOS benötigt HTTPS & Kamerafreigabe. Prüfe: Safari → aA → Website-Einstellungen → Kamera: Erlauben.</span>';
   }
 }
 
@@ -127,6 +139,8 @@ async function stopAll() {
 btnStart.addEventListener('click', startCamera);
 btnStop.addEventListener('click', stopAll);
 btnShot.addEventListener('click', predict);
+
+// Upload flow
 btnFile.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
