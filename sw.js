@@ -1,4 +1,4 @@
-const CACHE_NAME='tm-pwa-ios-minfix-v1';
+const CACHE_NAME='tm-pwa-ios-minfix-v12';
 const CORE_ASSETS=['/tm-pwa/','/tm-pwa/index.html','/tm-pwa/app.js','/tm-pwa/manifest.webmanifest','/tm-pwa/assets/icon-180.png'];
 
 self.addEventListener('install',e=>{
