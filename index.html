@@ -91,7 +91,7 @@
     // Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(console.error);
+        navigator.serviceWorker.register('/tm-pwa/sw.js', { scope: '/tm-pwa/' }).catch(console.error);
       });
     }
     // PWA Install
