@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>TM – iPhone PWA (Lazy Load)</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#ffffff"/>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <style>
+    :root { --pad: 16px; }
+    html, body { margin: 0; padding: 0; font-family: -apple-system, system-ui, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:#fff; color:#111; }
+    header { position: sticky; top: 0; background: #fff; padding: var(--pad); border-bottom: 1px solid #eee; display:flex; justify-content:space-between; gap:8px; align-items:center; }
+    h1 { font-size: 18px; margin: 0; }
+    main { padding: var(--pad); }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+    .card { border:1px solid #e5e7eb; border-radius: 12px; padding: 12px; }
+    #canvas { border-radius: 12px; width: 100%; height: auto; max-width: 640px; background:#f8f8f8; }
+    button { padding: 10px 14px; border-radius: 10px; border:1px solid #e5e7eb; background:#fff; }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .6; }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .labels { min-width: 240px; }
+    .status { font-size: 12px; color:#555; margin-top:6px; }
+    .uploader { border:2px dashed #e5e7eb; border-radius:12px; padding:12px; text-align:center; margin-top:12px; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #e5e7eb; border-radius:9999px; font-size:12px; }
+    .hint { font-size: 13px; color:#333; }
+    .error { color: #b00020; }
+    .ok { color: #0a7b34; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Teachable Machine – iPhone PWA</h1>
+    <div>
+      <button id="btn-install" hidden>Installieren</button>
+      <span class="pill" id="pwaState">PWA: unbekannt</span>
+    </div>
+  </header>
+  <main>
+    <div class="row">
+      <div class="card" style="max-width:700px;">
+        <canvas id="canvas" width="640" height="480" aria-label="Vorschau"></canvas>
+        <div class="controls">
+          <button id="btn-start">📷 Kamera starten</button>
+          <button id="btn-stop" disabled>⏹️ Stop</button>
+          <button id="btn-shot" disabled>🔍 Einzel-Prediction</button>
+          <label class="hint"><input type="checkbox" id="auto" checked> Live-Prediction</label>
+        </div>
+        <div class="uploader">
+          <p style="margin:0 0 8px 0"><strong>Oder: Foto auswählen</strong></p>
+          <input type="file" id="file" accept="image/*" capture="environment" style="display:none">
+          <button id="btn-file">Bild aus Mediathek/Kamera wählen</button>
+          <div class="status">iPhone: Kamera & PWA funktionieren nur über <strong>HTTPS</strong>. Tippe oben auf „Installieren“, um zum Home-Bildschirm hinzuzufügen.</div>
+        </div>
+        <div class="status" id="status">Bereit. Das Modell wird erst geladen, wenn du auf „Kamera starten“ oder „Bild auswählen“ tippst.</div>
+        <div class="status" id="diag"></div>
+      </div>
+      <div class="card labels">
+        <strong>Ergebnis</strong>
+        <div id="results"></div>
+      </div>
+    </div>
+    <p class="status">Lege deine Teachable‑Machine‑Dateien in <code>/model</code> (<code>model.json</code>, <code>metadata.json</code>, <code>*.bin</code>). Beim ersten Öffnen online werden alle Dateien gecacht und sind danach offline verfügbar.</p>
+  </main>
+
+  <!-- TFJS & Teachable Machine: erst beim Bedarf laden (lazy) -->
+  <script>
+    let libsLoaded = false;
+    async function ensureLibs() {
+      if (libsLoaded) return;
+      await Promise.all([
+        new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        }),
+        new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        })
+      ]);
+      libsLoaded = true;
+    }
+  </script>
+  <script src="app.js"></script>
+  <script>
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.error);
+      });
+    }
+    // PWA Install
+    let deferredPrompt;
+    const btnInstall = document.getElementById('btn-install');
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstall.hidden = false;
+    });
+    btnInstall?.addEventListener('click', async() => {
+      btnInstall.hidden = true;
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      }
+    });
+    const pwaState = document.getElementById('pwaState');
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    pwaState.textContent = 'PWA: ' + (isStandalone ? 'installiert' : 'nicht installiert');
+  </script>
+</body>
+</html>
