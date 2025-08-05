@@ -1,5 +1,5 @@
-// iPhone-optimized PWA Service Worker
-const CACHE_NAME = 'tm-pwa-ios-v1';
+// SW with bumped cache & offline; lazy libs will be cached after first load
+const CACHE_NAME = 'tm-pwa-ios-lazy-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -8,8 +8,7 @@ const CORE_ASSETS = [
   './assets/icon-180.png',
   './assets/icon-192.png',
   './assets/icon-512.png',
-  'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js',
-  'https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js',
+  // libs are fetched lazily; SW will cache them after first request automatically (see cacheFirst)
 ];
 
 self.addEventListener('install', event => {
@@ -28,8 +27,10 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.pathname.includes('/model/') || CORE_ASSETS.includes(url.pathname) || CORE_ASSETS.includes(url.href)) {
     event.respondWith(cacheFirst(event.request));
+  } else if (url.href.includes('cdn.jsdelivr.net')) {
+    event.respondWith(staleWhileRevalidate(event.request)); // cache TFJS/TM after first load
   } else {
-    event.respondWith(staleWhileRevalidate(event.request));
+    event.respondWith(fetch(event.request).catch(() => caches.match('./')));
   }
 });
 
@@ -49,5 +50,5 @@ async function staleWhileRevalidate(request) {
     if (resp && resp.ok) cache.put(request, resp.clone());
     return resp;
   }).catch(()=>undefined);
-  return cached || networkPromise || fetch(request);
+  return cached || networkPromise;
 }

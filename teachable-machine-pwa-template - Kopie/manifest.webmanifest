@@ -1,5 +1,5 @@
 {
-  "name": "TM iPhone PWA",
+  "name": "TM iPhone PWA (Lazy)",
   "short_name": "TM PWA",
   "start_url": ".",
   "display": "standalone",

@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>TM – iPhone PWA</title>
+  <title>TM – iPhone PWA (Lazy Load)</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#ffffff"/>
-  <!-- iOS PWA meta -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="assets/icon-180.png">
@@ -28,6 +27,8 @@
     .uploader { border:2px dashed #e5e7eb; border-radius:12px; padding:12px; text-align:center; margin-top:12px; }
     .pill { display:inline-block; padding:2px 8px; border:1px solid #e5e7eb; border-radius:9999px; font-size:12px; }
     .hint { font-size: 13px; color:#333; }
+    .error { color: #b00020; }
+    .ok { color: #0a7b34; }
   </style>
 </head>
 <body>
@@ -54,19 +55,37 @@
           <button id="btn-file">Bild aus Mediathek/Kamera wählen</button>
           <div class="status">iPhone: Kamera & PWA funktionieren nur über <strong>HTTPS</strong>. Tippe oben auf „Installieren“, um zum Home-Bildschirm hinzuzufügen.</div>
         </div>
-        <div class="status" id="status">Bereit. Tippe auf „Kamera starten“ oder wähle ein Bild.</div>
+        <div class="status" id="status">Bereit. Das Modell wird erst geladen, wenn du auf „Kamera starten“ oder „Bild auswählen“ tippst.</div>
+        <div class="status" id="diag"></div>
       </div>
       <div class="card labels">
         <strong>Ergebnis</strong>
         <div id="results"></div>
       </div>
     </div>
-    <p class="status">Tipp: Lege deine Teachable‑Machine‑Dateien in <code>/model</code> (<code>model.json</code>, <code>metadata.json</code>, <code>*.bin</code>). Beim ersten Öffnen online werden alle Dateien gecacht und sind danach offline verfügbar.</p>
+    <p class="status">Lege deine Teachable‑Machine‑Dateien in <code>/model</code> (<code>model.json</code>, <code>metadata.json</code>, <code>*.bin</code>). Beim ersten Öffnen online werden alle Dateien gecacht und sind danach offline verfügbar.</p>
   </main>
 
-  <!-- TFJS & Teachable Machine (werden per SW gecached) -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+  <!-- TFJS & Teachable Machine: erst beim Bedarf laden (lazy) -->
+  <script>
+    let libsLoaded = false;
+    async function ensureLibs() {
+      if (libsLoaded) return;
+      await Promise.all([
+        new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        }),
+        new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        })
+      ]);
+      libsLoaded = true;
+    }
+  </script>
   <script src="app.js"></script>
   <script>
     // Service Worker

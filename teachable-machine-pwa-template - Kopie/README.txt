@@ -1,13 +1,11 @@
-TM – iPhone-optimierte PWA
-============================
-- iOS-taugliche Kamera (User-Geste, playsInline, muted Autoplay, facingMode: environment).
-- Bild-Upload (accept='image/*' capture='environment').
-- PWA-Setup (Manifest, Service Worker, iOS-Icons).
-- Offline nach erstem Online-Start (Caching).
+TM – iPhone PWA (Lazy Loading)
+===================================
+- Lädt TFJS & TM **erst bei Bedarf** (verhindert White-Screen, wenn Modell fehlt).
+- Modell wird erst beim Klick auf „Kamera starten“ oder „Bild auswählen“ geladen.
+- Robuste Diagnosehinweise bei Ladefehlern.
+- PWA/Offline via Service Worker (Cache v3).
 
 Verwendung:
-1) TM-Modell als TensorFlow.js exportieren.
-2) Dateien in `./model` legen: `model.json`, `metadata.json`, alle `*.bin`.
-3) Zum Test am PC: `python -m http.server 8000` → `http://localhost:8000/`.
-4) Für iPhone-Kamera & PWA: Projekt auf **HTTPS** hosten (z. B. Netlify, GitHub Pages).
-5) In Safari öffnen → **Teilen → Zum Home-Bildschirm**. Beim ersten Start online öffnen.
+1) TM-Export (TensorFlow.js) in `./model/` legen.
+2) Auf GitHub Pages/Netlify deployen (HTTPS).
+3) iPhone Safari → öffnen → Kamera erlauben → „Zum Home-Bildschirm“.
