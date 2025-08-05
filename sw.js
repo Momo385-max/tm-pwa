@@ -1,5 +1,5 @@
 // SW with bumped cache & offline; lazy libs will be cached after first load
-const CACHE_NAME = 'tm-pwa-ios-lazy-v5';
+const CACHE_NAME = 'tm-pwa-ios-lazy-v6';
 const CORE_ASSETS = [
   './',
   './index.html',
