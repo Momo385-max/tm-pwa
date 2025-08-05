@@ -1,11 +1,14 @@
-TM – iPhone PWA (Lazy Loading)
-===================================
-- Lädt TFJS & TM **erst bei Bedarf** (verhindert White-Screen, wenn Modell fehlt).
-- Modell wird erst beim Klick auf „Kamera starten“ oder „Bild auswählen“ geladen.
-- Robuste Diagnosehinweise bei Ladefehlern.
-- PWA/Offline via Service Worker (Cache v3).
+TM – iPhone PWA (Forced Reload aller Modelldateien)
+=====================================================
+- Absoluter Modellpfad (GitHub Pages): https://momo385-max.github.io/tm-pwa/model/
+- Forced Reload: model.json, metadata.json und alle *.bin werden vor dem Laden mit cache:'reload' vom Netz geholt.
+- Service Worker:
+  - Scope & URLs auf /tm-pwa/ festgenagelt
+  - Network-first für /tm-pwa/model/ (verhindert stale Cache in iOS-PWA)
+  - Stale-while-revalidate für restliche Assets
+- Manifest: start_url & scope = /tm-pwa/
 
 Verwendung:
-1) TM-Export (TensorFlow.js) in `./model/` legen.
-2) Auf GitHub Pages/Netlify deployen (HTTPS).
-3) iPhone Safari → öffnen → Kamera erlauben → „Zum Home-Bildschirm“.
+1) Deine TM-Dateien in ./model/ legen (model.json, metadata.json, *.bin).
+2) Alle Dateien ins Repo-Root von tm-pwa hochladen (ersetzt bestehende).
+3) Seite neu laden; auf iPhone PWA neu installieren.
