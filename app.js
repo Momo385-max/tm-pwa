@@ -14,7 +14,7 @@ const autoChk = document.getElementById('auto');
 const fileInput = document.getElementById('file');
 const btnFile = document.getElementById('btn-file');
 
-const MODEL_URL = './model/';
+const MODEL_URL = 'https://momo385-max.github.io/tm-pwa/model/';
 
 async function loadLibs() {
   try {
