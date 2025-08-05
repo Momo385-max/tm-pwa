@@ -1,54 +1,26 @@
-// SW with bumped cache & offline; lazy libs will be cached after first load
-const CACHE_NAME = 'tm-pwa-ios-lazy-v11';
-const CORE_ASSETS = [
-  './',
-  './index.html',
-  './app.js',
-  './manifest.webmanifest',
-  './assets/icon-180.png',
-  './assets/icon-192.png',
-  './assets/icon-512.png',
-  // libs are fetched lazily; SW will cache them after first request automatically (see cacheFirst)
-];
+const CACHE_NAME='tm-pwa-ios-minfix-v1';
+const CORE_ASSETS=['/tm-pwa/','/tm-pwa/index.html','/tm-pwa/app.js','/tm-pwa/manifest.webmanifest','/tm-pwa/assets/icon-180.png'];
 
-self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(CORE_ASSETS)));
-  self.skipWaiting();
+self.addEventListener('install',e=>{
+ e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(CORE_ASSETS)));
+ self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
-  );
-  self.clients.claim();
+self.addEventListener('activate',e=>{
+ e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));
+ self.clients.claim();
 });
 
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (url.pathname.includes('/model/') || CORE_ASSETS.includes(url.pathname) || CORE_ASSETS.includes(url.href)) {
-    event.respondWith(cacheFirst(event.request));
-  } else if (url.href.includes('cdn.jsdelivr.net')) {
-    event.respondWith(staleWhileRevalidate(event.request)); // cache TFJS/TM after first load
-  } else {
-    event.respondWith(fetch(event.request).catch(() => caches.match('./')));
-  }
+self.addEventListener('fetch',e=>{
+ const url=new URL(e.request.url);
+ if(url.pathname.startsWith('/tm-pwa/model/')){
+   // network-first for model files
+   e.respondWith(fetch(e.request,{cache:'reload'}).catch(()=>caches.match(e.request)));
+   return;
+ }
+ if(url.pathname.startsWith('/tm-pwa/')||url.hostname.includes('cdn.jsdelivr.net')){
+   e.respondWith(caches.match(e.request).then(cached=>cached||fetch(e.request)));
+   return;
+ }
+ e.respondWith(fetch(e.request).catch(()=>caches.match('/tm-pwa/')));
 });
-
-async function cacheFirst(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  const resp = await fetch(request);
-  if (resp && resp.ok) cache.put(request, resp.clone());
-  return resp;
-}
-
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  const networkPromise = fetch(request).then(resp => {
-    if (resp && resp.ok) cache.put(request, resp.clone());
-    return resp;
-  }).catch(()=>undefined);
-  return cached || networkPromise;
-}
