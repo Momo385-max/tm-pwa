@@ -1,4 +1,4 @@
-// PWA with forced reload of all model assets
+// Lazy-load TM model & libs on user action; robust error messages
 let model, maxPredictions;
 let stream, video, anim;
 const canvas = document.getElementById('canvas');
@@ -14,45 +14,13 @@ const autoChk = document.getElementById('auto');
 const fileInput = document.getElementById('file');
 const btnFile = document.getElementById('btn-file');
 
-const MODEL_URL = 'https://momo385-max.github.io/tm-pwa/model/'; // absolute URL for GitHub Pages subpath
-
-async function forceReloadModelAssets() {
-  // Always fetch model.json & metadata.json fresh from network
-  const urlsToFetch = [MODEL_URL + 'model.json', MODEL_URL + 'metadata.json'];
-  try {
-    const modelResp = await fetch(MODEL_URL + 'model.json', { cache: 'reload' });
-    if (!modelResp.ok) throw new Error('model.json network error ' + modelResp.status);
-    const modelJson = await modelResp.clone().json();
-
-    // Try to find weight shard paths in TFJS manifest
-    if (modelJson && modelJson.weightsManifest) {
-      for (const group of modelJson.weightsManifest) {
-        for (const path of group.paths) {
-          urlsToFetch.push(MODEL_URL + path);
-        }
-      }
-    }
-  } catch (e) {
-    diagEl.innerHTML = '<span class="error">Konnte model.json nicht frisch laden: ' + (e && e.message ? e.message : e) + '</span>';
-    throw e;
-  }
-
-  // Fetch all URLs with cache: 'reload' to bypass any stale cache
-  for (const u of urlsToFetch) {
-    try {
-      const r = await fetch(u, { cache: 'reload' });
-      if (!r.ok) throw new Error('HTTP ' + r.status + ' for ' + u);
-    } catch (e) {
-      diagEl.innerHTML = '<span class="error">Fehler beim Forced-Reload: ' + u + '</span>';
-      throw e;
-    }
-  }
-}
+const MODEL_URL = './model/';
 
 async function loadLibs() {
-  try { await ensureLibs(); }
-  catch (e) {
-    diagEl.innerHTML = '<span class="error">Fehler: TFJS/TM Libraries nicht geladen.</span>'; 
+  try {
+    await ensureLibs();
+  } catch (e) {
+    diagEl.innerHTML = '<span class=\"error\">Fehler: Konnte TFJS/TeachableMachine nicht laden. Prüfe Internet / CDN.</span>';
     throw e;
   }
 }
@@ -60,21 +28,16 @@ async function loadLibs() {
 async function loadModel() {
   if (model) return;
   await loadLibs();
-
-  // Force fresh network fetch for model assets before load
-  statusEl.textContent = 'Prüfe & lade Modelldateien (netzwerk-frisch)...';
-  await forceReloadModelAssets();
-
   statusEl.textContent = 'Lade Modell...';
   const modelURL = MODEL_URL + 'model.json';
   const metadataURL = MODEL_URL + 'metadata.json';
   try {
     model = await tmImage.load(modelURL, metadataURL);
     maxPredictions = model.getTotalClasses();
-    statusEl.innerHTML = '<span class="ok">Modell geladen.</span>';
+    statusEl.innerHTML = '<span class=\"ok\">Modell geladen.</span>';
   } catch (e) {
     console.error(e);
-    diagEl.innerHTML = '<span class="error">Fehler beim initialen Laden des Modells.</span>';
+    diagEl.innerHTML = '<span class=\"error\">Fehler beim Laden von <code>model/model.json</code> oder <code>metadata.json</code>. Existieren die Dateien? Stimmen die Dateinamen? Sind große <code>.bin</code>-Dateien via GitHub Pages verfügbar?</span>';
     throw e;
   }
 }
@@ -82,7 +45,11 @@ async function loadModel() {
 // Start camera (iOS-friendly)
 async function startCamera() {
   await stopAll(); // reset state
-  try { await loadModel(); } catch { return; }
+  try {
+    await loadModel();
+  } catch {
+    return;
+  }
   const constraints = { video: { facingMode: { ideal: 'environment' } }, audio: false };
   try {
     stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -93,6 +60,7 @@ async function startCamera() {
     video.srcObject = stream;
     await video.play();
 
+    // Resize canvas
     const vw = video.videoWidth || 640;
     const vh = video.videoHeight || 480;
     const scale = Math.min(640 / vw, 480 / vh, 1);
@@ -113,7 +81,7 @@ async function startCamera() {
   } catch (e) {
     console.error(e);
     statusEl.textContent = 'Kamera konnte nicht gestartet werden.';
-    diagEl.innerHTML = '<span class="error">iOS benötigt HTTPS & Kamerafreigabe. Prüfe: Safari → aA → Website-Einstellungen → Kamera: Erlauben.</span>';
+    diagEl.innerHTML = '<span class=\"error\">iOS benötigt HTTPS & Kamerafreigabe. Prüfe: Safari → aA → Website-Einstellungen → Kamera: Erlauben.</span>';
   }
 }
 
@@ -125,13 +93,16 @@ async function predict() {
     resultsEl.innerHTML = prediction.map(p => `${p.className}: <strong>${(p.probability*100).toFixed(1)}%</strong>`).join('<br>');
   } catch (e) {
     console.error(e);
-    diagEl.innerHTML = '<span class="error">Prediction fehlgeschlagen.</span>';
+    diagEl.innerHTML = '<span class=\"error\">Prediction fehlgeschlagen.</span>';
   }
 }
 
 async function stopAll() {
   cancelAnimationFrame(anim);
-  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
   btnStop.disabled = true;
   btnShot.disabled = true;
 }
@@ -140,12 +111,16 @@ btnStart.addEventListener('click', startCamera);
 btnStop.addEventListener('click', stopAll);
 btnShot.addEventListener('click', predict);
 
-// Upload flow
+// Upload flow (lazy load model on demand)
 btnFile.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
-  try { await loadModel(); } catch { return; }
+  try {
+    await loadModel();
+  } catch {
+    return;
+  }
   await stopAll();
   const img = new Image();
   img.onload = async () => {

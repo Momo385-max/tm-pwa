@@ -1,8 +1,7 @@
 {
-  "name": "TM iPhone PWA (Forced Reload)",
+  "name": "TM iPhone PWA (Lazy)",
   "short_name": "TM PWA",
-  "start_url": "/tm-pwa/",
-  "scope": "/tm-pwa/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",

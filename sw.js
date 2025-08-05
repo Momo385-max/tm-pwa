@@ -1,13 +1,14 @@
-// SW with absolute scope and network-first for /tm-pwa/model/ to avoid stale caches
-const CACHE_NAME = 'tm-pwa-ios-forced-v10';
+// SW with bumped cache & offline; lazy libs will be cached after first load
+const CACHE_NAME = 'tm-pwa-ios-lazy-v3';
 const CORE_ASSETS = [
-  '/tm-pwa/',
-  '/tm-pwa/index.html',
-  '/tm-pwa/app.js',
-  '/tm-pwa/manifest.webmanifest',
-  '/tm-pwa/assets/icon-180.png',
-  '/tm-pwa/assets/icon-192.png',
-  '/tm-pwa/assets/icon-512.png',
+  './',
+  './index.html',
+  './app.js',
+  './manifest.webmanifest',
+  './assets/icon-180.png',
+  './assets/icon-192.png',
+  './assets/icon-512.png',
+  // libs are fetched lazily; SW will cache them after first request automatically (see cacheFirst)
 ];
 
 self.addEventListener('install', event => {
@@ -24,34 +25,22 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-
-  // Network-first for model assets to avoid stale cache issues on iOS
-  if (url.pathname.startsWith('/tm-pwa/model/')) {
-    event.respondWith(networkFirst(event.request));
-    return;
+  if (url.pathname.includes('/model/') || CORE_ASSETS.includes(url.pathname) || CORE_ASSETS.includes(url.href)) {
+    event.respondWith(cacheFirst(event.request));
+  } else if (url.href.includes('cdn.jsdelivr.net')) {
+    event.respondWith(staleWhileRevalidate(event.request)); // cache TFJS/TM after first load
+  } else {
+    event.respondWith(fetch(event.request).catch(() => caches.match('./')));
   }
-
-  // Stale-while-revalidate for common assets and CDN libs
-  if (url.pathname.startsWith('/tm-pwa/') || url.hostname.includes('cdn.jsdelivr.net')) {
-    event.respondWith(staleWhileRevalidate(event.request));
-    return;
-  }
-
-  // Default: try network, fallback to cached home
-  event.respondWith(fetch(event.request).catch(() => caches.match('/tm-pwa/')));
 });
 
-async function networkFirst(request) {
+async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);
-  try {
-    const resp = await fetch(request, { cache: 'reload' });
-    if (resp && resp.ok) cache.put(request, resp.clone());
-    return resp;
-  } catch (e) {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    throw e;
-  }
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const resp = await fetch(request);
+  if (resp && resp.ok) cache.put(request, resp.clone());
+  return resp;
 }
 
 async function staleWhileRevalidate(request) {
